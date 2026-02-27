@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-
 import '../models/todo_item.dart';
-import '../services/reward_engine.dart';
 import '../widgets/todo_card.dart';
-import '../widgets/xp_bar.dart';
 
 class TodoHomePage extends StatefulWidget {
   const TodoHomePage({super.key});
@@ -13,213 +10,102 @@ class TodoHomePage extends StatefulWidget {
 }
 
 class _TodoHomePageState extends State<TodoHomePage> {
-  final List<TodoItem> _todos = [];
-  int _xp = 0;
-  int _level = 1;
-  final int _xpPerLevel = 100;
+  final List<TodoItem> _tasks = [];
 
-  void _addTodo(String title, TaskType type, int level) {
-    if (title.trim().isEmpty) return;
-    setState(() {
-      _todos.add(TodoItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: title.trim(),
-        type: type,
-        level: level,
-      ));
-    });
-  }
-
-  void _toggleGolden(TodoItem todo) {
-    if (todo.type != TaskType.quest) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Only Quests can be Golden Tasks!')),
-      );
-      return;
-    }
-
-    setState(() {
-      if (!todo.isGolden) {
-        for (var item in _todos) {
-          item.isGolden = false;
-        }
-        todo.isGolden = true;
-      } else {
-        todo.isGolden = false;
-      }
-    });
-  }
-
-  void _toggleTodo(TodoItem todo) {
-    setState(() {
-      final earnedXP = RewardEngine.calculateXP(todo);
-      if (todo.isCompleted) {
-        todo.isCompleted = false;
-        _xp = (_xp - earnedXP).clamp(0, 999999);
-      } else {
-        todo.isCompleted = true;
-        _xp += earnedXP;
-        while (_xp >= _xpPerLevel) {
-          _xp -= _xpPerLevel;
-          _level++;
-        }
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final goldenTask = _todos.where((t) => t.isGolden).toList();
-    final regularTasks = _todos.where((t) => !t.isGolden).toList();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('QuestLog XP')),
-      drawer: _buildSidebar(),
-      body: Column(
-        children: [
-          XpBar(level: _level, xp: _xp, xpPerLevel: _xpPerLevel),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (goldenTask.isNotEmpty) ...[
-                  const Text(
-                    "FOCUS / GOLDEN TASK",
-                    style: TextStyle(
-                      color: Colors.amber,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TodoCard(
-                    todo: goldenTask.first,
-                    onToggleTodo: () => _toggleTodo(goldenTask.first),
-                    onToggleGolden: () => _toggleGolden(goldenTask.first),
-                  ),
-                  const SizedBox(height: 32),
-                  const Divider(color: Colors.grey),
-                  const SizedBox(height: 16),
-                ],
-                const Text(
-                  "OTHER TASKS",
-                  style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...regularTasks.map(
-                  (t) => TodoCard(
-                    todo: t,
-                    onToggleTodo: () => _toggleTodo(t),
-                    onToggleGolden: () => _toggleGolden(t),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddTodoDialog,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Widget _buildSidebar() {
-    return Drawer(
-      backgroundColor: const Color(0xFF1A1A24),
-      child: Column(
-        children: [
-          const UserAccountsDrawerHeader(
-            decoration: BoxDecoration(color: Color(0xFF2D2D3A)),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.amber,
-              child: Icon(Icons.person, color: Colors.black),
-            ),
-            accountName: Text('Aviv', style: TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: Text('System Integration Engineer'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.calendar_today, color: Colors.amber),
-            title: const Text('Daily Rituals'),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.date_range, color: Colors.orange),
-            title: const Text('Weekly Rituals'),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.whatshot, color: Colors.deepOrange),
-            title: const Text('Quests'),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.account_tree, color: Colors.blueAccent),
-            title: const Text('Projects'),
-            onTap: () => Navigator.pop(context),
-          ),
-          const Spacer(),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('Settings'),
-            onTap: () => Navigator.pop(context),
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
-  }
-
-  void _showAddTodoDialog() {
-    final controller = TextEditingController();
-    int selectedLevel = 1;
-    TaskType selectedType = TaskType.quest;
+  void _showTaskDialog({TodoItem? todo}) {
+    final isEditing = todo != null;
+    final controller = TextEditingController(text: todo?.title ?? '');
+    int level = todo?.level ?? 1;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF2D2D3A),
-          title: const Text('Add Task'),
+          title: Text(isEditing ? 'Edit Task' : 'New Task'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: controller, autofocus: true),
-              const SizedBox(height: 20),
-              DropdownButton<TaskType>(
-                value: selectedType,
-                isExpanded: true,
-                items: const [
-                  DropdownMenuItem(value: TaskType.dailyRitual, child: Text("Daily Ritual")),
-                  DropdownMenuItem(value: TaskType.weeklyRitual, child: Text("Weekly Ritual")),
-                  DropdownMenuItem(value: TaskType.quest, child: Text("Quest")),
-                ],
-                onChanged: (val) => setDialogState(() => selectedType = val!),
+              TextField(
+                controller: controller, 
+                autofocus: true,
+                decoration: const InputDecoration(hintText: 'Task Title'),
               ),
+              const SizedBox(height: 20),
+              Text('Level: $level'),
               Slider(
-                value: selectedLevel.toDouble(),
-                min: 1,
-                max: 5,
-                divisions: 4,
-                onChanged: (val) => setDialogState(() => selectedLevel = val.toInt()),
+                value: level.toDouble(), min: 1, max: 5, divisions: 4,
+                onChanged: (v) => setDialogState(() => level = v.toInt()),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
               onPressed: () {
-                _addTodo(controller.text, selectedType, selectedLevel);
+                setState(() {
+                  if (isEditing) {
+                    todo.title = controller.text;
+                    todo.level = level;
+                  } else {
+                    // NEW TASKS ADDED TO INDEX 0 (TOP)
+                    _tasks.insert(0, TodoItem(
+                      id: DateTime.now().toString(), 
+                      title: controller.text, 
+                      level: level,
+                    ));
+                  }
+                });
                 Navigator.pop(context);
               },
-              child: const Text('Create'),
+              child: Text(isEditing ? 'Save' : 'Create'),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Task List'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sort),
+            onPressed: () => setState(() => _tasks.sort((a, b) => b.level.compareTo(a.level))),
+            tooltip: 'Sort by Level',
+          ),
+        ],
+      ),
+      body: ReorderableListView.builder(
+        buildDefaultDragHandles: false, // Disables the default right-side icon
+        itemCount: _tasks.length,
+        onReorder: (oldIdx, newIdx) {
+          setState(() {
+            if (newIdx > oldIdx) newIdx -= 1;
+            final item = _tasks.removeAt(oldIdx);
+            _tasks.insert(newIdx, item);
+          });
+        },
+        itemBuilder: (context, index) {
+          final task = _tasks[index];
+          // Wrapping in listener makes the entire child a drag handle
+          return ReorderableDragStartListener(
+            key: ValueKey(task.id),
+            index: index,
+            child: TodoCard(
+              todo: task,
+              onToggle: () => setState(() => task.isCompleted = !task.isCompleted),
+              onEdit: () => _showTaskDialog(todo: task),
+              onDelete: () => setState(() => _tasks.remove(task)),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showTaskDialog(),
+        child: const Icon(Icons.add),
       ),
     );
   }

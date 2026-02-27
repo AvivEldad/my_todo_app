@@ -1,27 +1,19 @@
 import 'package:flutter/material.dart';
-
 import 'screens/home_page.dart';
 
-void main() {
-  runApp(const QuestLogApp());
-}
+void main() => runApp(const TaskApp());
 
-class QuestLogApp extends StatelessWidget {
-  const QuestLogApp({super.key});
+class TaskApp extends StatelessWidget {
+  const TaskApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'QuestLog XP',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        brightness: Brightness.dark, 
         useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.dark(
-          primary: Colors.amber,
-          surface: const Color(0xFF1E1E2E),
-        ),
-        scaffoldBackgroundColor: const Color(0xFF12121A),
+        primarySwatch: Colors.amber,
       ),
       home: const TodoHomePage(),
     );
