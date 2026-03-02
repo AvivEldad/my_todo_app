@@ -12,9 +12,38 @@ class TodoHomePage extends StatefulWidget {
 class _TodoHomePageState extends State<TodoHomePage> {
   final List<TodoItem> _tasks = [];
 
+  void _sortByLevel() {
+    setState(() {
+      _tasks.sort((a, b) => b.level.compareTo(a.level));
+    });
+  }
+
+  void _sortByDate() {
+    setState(() {
+      _tasks.sort((a, b) {
+        if (a.dueDate == null && b.dueDate == null) {
+          return b.level.compareTo(a.level); 
+        }
+        if (a.dueDate == null) return 1;
+        if (b.dueDate == null) return -1;
+
+        int dateCompare = a.dueDate!.compareTo(b.dueDate!);
+        
+        // שובר שוויון: אם התאריך זהה, המשימה עם הרמה הגבוהה יותר תהיה ראשונה
+        if (dateCompare == 0) {
+          return b.level.compareTo(a.level);
+        }
+        
+        return dateCompare;
+      });
+    });
+  }
+
   void _showTaskDialog({TodoItem? todo}) {
     final isEditing = todo != null;
-    final controller = TextEditingController(text: todo?.title ?? '');
+    final titleController = TextEditingController(text: todo?.title ?? '');
+    final descController = TextEditingController(text: todo?.description ?? '');
+    DateTime? selectedDate = todo?.dueDate;
     int level = todo?.level ?? 1;
 
     showDialog(
@@ -22,35 +51,67 @@ class _TodoHomePageState extends State<TodoHomePage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(isEditing ? 'עריכת משימה' : 'משימה חדשה'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(hintText: 'מה המשימה?'),
-              ),
-              const SizedBox(height: 20),
-              Text('רמה: $level'),
-              Slider(
-                value: level.toDouble(), min: 1, max: 5, divisions: 4,
-                onChanged: (v) => setDialogState(() => level = v.toInt()),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  autofocus: true,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(hintText: 'כותרת המשימה'),
+                ),
+                TextField(
+                  controller: descController,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(hintText: 'תיאור (אופציונלי)'),
+                ),
+                const SizedBox(height: 20),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(selectedDate == null 
+                    ? 'בחר תאריך סיום' 
+                    : 'תאריך: ${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}'),
+                  trailing: const Icon(Icons.calendar_month),
+                  onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate ?? DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text('רמת עדיפות: $level'),
+                Slider(
+                  value: level.toDouble(), min: 1, max: 5, divisions: 4,
+                  activeColor: Colors.amber,
+                  onChanged: (v) => setDialogState(() => level = v.toInt()),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
             ElevatedButton(
               onPressed: () {
+                if (titleController.text.isEmpty) return;
                 setState(() {
                   if (isEditing) {
-                    todo.title = controller.text;
+                    todo.title = titleController.text;
+                    todo.description = descController.text;
+                    todo.dueDate = selectedDate;
                     todo.level = level;
                   } else {
                     _tasks.insert(0, TodoItem(
                       id: DateTime.now().toString(),
-                      title: controller.text,
+                      title: titleController.text,
+                      description: descController.text,
+                      dueDate: selectedDate,
                       level: level,
                     ));
                   }
@@ -71,9 +132,16 @@ class _TodoHomePageState extends State<TodoHomePage> {
       appBar: AppBar(
         title: const Text('רשימת משימות'),
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
-            onPressed: () => setState(() => _tasks.sort((a, b) => b.level.compareTo(a.level))),
+            onSelected: (value) {
+              if (value == 'level') _sortByLevel();
+              if (value == 'date') _sortByDate();
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'level', child: Text('מיון לפי רמה')),
+              const PopupMenuItem(value: 'date', child: Text('מיון לפי תאריך')),
+            ],
           ),
         ],
       ),
@@ -83,7 +151,8 @@ class _TodoHomePageState extends State<TodoHomePage> {
         onReorder: (oldIdx, newIdx) {
           setState(() {
             if (newIdx > oldIdx) newIdx -= 1;
-            _tasks.insert(newIdx, _tasks.removeAt(oldIdx));
+            final item = _tasks.removeAt(oldIdx);
+            _tasks.insert(newIdx, item);
           });
         },
         itemBuilder: (context, index) {
@@ -95,7 +164,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
               todo: task,
               onToggle: () => setState(() => task.isCompleted = !task.isCompleted),
               onEdit: () => _showTaskDialog(todo: task),
-              onDelete: () => setState(() => _tasks.remove(task)),
+              onDelete: () => setState(() => _tasks.removeAt(index)),
             ),
           );
         },
