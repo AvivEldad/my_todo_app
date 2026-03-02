@@ -21,17 +21,18 @@ class _TodoHomePageState extends State<TodoHomePage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Edit Task' : 'New Task'),
+          title: Text(isEditing ? 'עריכת משימה' : 'משימה חדשה'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
-                controller: controller, 
+                controller: controller,
                 autofocus: true,
-                decoration: const InputDecoration(hintText: 'Task Title'),
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(hintText: 'מה המשימה?'),
               ),
               const SizedBox(height: 20),
-              Text('Level: $level'),
+              Text('רמה: $level'),
               Slider(
                 value: level.toDouble(), min: 1, max: 5, divisions: 4,
                 onChanged: (v) => setDialogState(() => level = v.toInt()),
@@ -39,7 +40,7 @@ class _TodoHomePageState extends State<TodoHomePage> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('ביטול')),
             ElevatedButton(
               onPressed: () {
                 setState(() {
@@ -47,17 +48,16 @@ class _TodoHomePageState extends State<TodoHomePage> {
                     todo.title = controller.text;
                     todo.level = level;
                   } else {
-                    // NEW TASKS ADDED TO INDEX 0 (TOP)
                     _tasks.insert(0, TodoItem(
-                      id: DateTime.now().toString(), 
-                      title: controller.text, 
+                      id: DateTime.now().toString(),
+                      title: controller.text,
                       level: level,
                     ));
                   }
                 });
                 Navigator.pop(context);
               },
-              child: Text(isEditing ? 'Save' : 'Create'),
+              child: Text(isEditing ? 'שמור' : 'צור'),
             ),
           ],
         ),
@@ -69,28 +69,25 @@ class _TodoHomePageState extends State<TodoHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task List'),
+        title: const Text('רשימת משימות'),
         actions: [
           IconButton(
             icon: const Icon(Icons.sort),
             onPressed: () => setState(() => _tasks.sort((a, b) => b.level.compareTo(a.level))),
-            tooltip: 'Sort by Level',
           ),
         ],
       ),
       body: ReorderableListView.builder(
-        buildDefaultDragHandles: false, // Disables the default right-side icon
+        buildDefaultDragHandles: false,
         itemCount: _tasks.length,
         onReorder: (oldIdx, newIdx) {
           setState(() {
             if (newIdx > oldIdx) newIdx -= 1;
-            final item = _tasks.removeAt(oldIdx);
-            _tasks.insert(newIdx, item);
+            _tasks.insert(newIdx, _tasks.removeAt(oldIdx));
           });
         },
         itemBuilder: (context, index) {
           final task = _tasks[index];
-          // Wrapping in listener makes the entire child a drag handle
           return ReorderableDragStartListener(
             key: ValueKey(task.id),
             index: index,

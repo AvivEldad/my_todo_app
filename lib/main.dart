@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/home_page.dart';
 
 void main() => runApp(const TaskApp());
@@ -10,8 +11,18 @@ class TaskApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      // Fixed: Removed 'const' here because delegates are not constant expressions
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('he', 'IL'),
+      ],
+      locale: const Locale('he', 'IL'),
       theme: ThemeData(
-        brightness: Brightness.dark, 
+        brightness: Brightness.dark,
         useMaterial3: true,
         primarySwatch: Colors.amber,
       ),
