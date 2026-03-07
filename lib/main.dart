@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/home_page.dart';
 
-void main() => runApp(const TaskApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await NotificationService.init(); // אתחול כאן
+  runApp(const TaskApp());
+}
 
 class TaskApp extends StatelessWidget {
   const TaskApp({super.key});
